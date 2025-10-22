@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Juego de Ajedrez - Encuentra la Ficha</title>
+<style>
+  body {
+    margin: 0;
+    font-family: "Poppins", sans-serif;
+    text-align: center;
+    background-color: #0b1a33;
+    color: white;
+  }
+
+  /* Pantalla de reglas */
+  #inicio, #pantallaNivel, #pantallaFinal {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: white;
+    text-align: center;
+    padding: 20px;
+  }
+
+  #inicio {
+    display: flex;
+    background: url('https://png.pngtree.com/thumb_back/fh260/background/20230913/pngtree-chess-pieces-on-a-checkered-chess-board-image_13252137.jpg') center/cover no-repeat;
+    text-shadow: 2px 2px 4px #000;
+  }
+
+  #inicio h1 {
+    font-size: 2rem;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 10px 20px;
+    border-radius: 10px;
+  }
+
+  #inicio ul {
+    text-align: left;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 20px;
+    border-radius: 15px;
+    width: 80%;
+    max-width: 450px;
+    line-height: 1.6;
+  }
+
+  button {
+    padding: 12px 25px;
+    border: none;
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-top: 15px;
+  }
+
+  button:hover { background-color: #45a049; }
+
+  /* Pantalla del juego */
+  #juego {
+    display: none;
+    padding: 20px;
+  }
+
+  #nivelTitulo {
+    font-size: 2.2rem;
+    font-weight: 700;
+    text-shadow: 3px 3px 8px #000;
+    background: linear-gradient(90deg, #4facfe, #00f2fe);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+  }
+
+  .tablero {
+    display: grid;
+    grid-template-columns: 30px repeat(8, 45px);
+    grid-template-rows: repeat(8, 45px) 30px;
+    justify-content: center;
+    margin: 20px auto;
+    border: 3px solid #333;
+  }
+
+  .casilla {
+    width: 45px;
+    height: 45px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+  }
+
+  .blanca { background-color: #f0d9b5; }
+  .negra { background-color: #b58863; }
+
+  .letra, .numero {
+    background-color: transparent;
+    color: white;
+    font-weight: bold;
+  }
+
+  input {
+    padding: 8px;
+    border-radius: 8px;
+    border: none;
+    margin-top: 10px;
+    width: 220px;
+  }
+
+  #intentos {
+    margin-top: 15px;
+    font-weight: bold;
+    color: #ffd700;
+  }
+
+  .verde { background-color: #4CAF50 !important; }
+  .rojo { background-color: #ff4d4d !important; }
+
+  .mensaje { margin-top: 10px; font-style: italic; color: #ccc; }
+
+  /* Pantalla intermedia y final */
+  #pantallaNivel h2, #pantallaFinal h2 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    background: linear-gradient(90deg, #ffd700, #ff8c00);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+</style>
+</head>
+<body>
+
+<!-- Pantalla de reglas -->
+<div id="inicio">
+  <h1>♟️ Encuentra la Ficha</h1>
+  <ul>
+    <li>Tienes <b>10 intentos</b> para encontrar la ficha oculta.</li>
+    <li>Puedes preguntar: “¿Está en la columna D?” o “¿Está en la fila 5?”</li>
+    <li>También puedes preguntar por rangos: “¿Está entre la columna A–D?” o “¿Está entre la fila 3–6?”</li>
+    <li>Si aciertas, se marcará en <b style="color:lime;">verde</b>. Si fallas, en <b style="color:red;">rojo</b>.</li>
+  </ul>
+  <button onclick="iniciarNivel(1)">Iniciar Nivel 1 (Peón)</button>
+</div>
+
+<!-- Pantalla del juego -->
+<div id="juego">
+  <h2 id="nivelTitulo">Nivel 1: Encuentra el Peón ♙</h2>
+  <div id="tablero" class="tablero"></div>
+  <div>
+    <input id="pregunta" placeholder="Ej: ¿Está en la columna D? o E4">
+    <button onclick="verificarPregunta()">Preguntar</button>
+  </div>
+  <p id="mensaje" class="mensaje"></p>
+  <p id="intentos">Intentos restantes: 10</p>
+  <button onclick="reiniciarJuego()" style="background:#ff4d4d;">🔁 Reiniciar Juego</button>
+</div>
+
+<!-- Pantalla intermedia de nivel -->
+<div id="pantallaNivel">
+  <h2 id="textoNivel"></h2>
+  <button onclick="continuarNivel()">Continuar</button>
+</div>
+
+<!-- Pantalla final -->
+<div id="pantallaFinal">
+  <h2 id="resultadoFinal"></h2>
+  <button onclick="reiniciarJuego()">🔁 Reiniciar Juego</button>
+  <button onclick="salirJuego()" style="background:#d9534f;">🚪 Salir</button>
+</div>
+
+<script>
+  const letras = ["A","B","C","D","E","F","G","H"];
+  const tablero = document.getElementById("tablero");
+  const intentosTexto = document.getElementById("intentos");
+  const mensaje = document.getElementById("mensaje");
+  let intentos = 10;
+  let fichaPos;
+  let nivelActual = 1;
+
+  function iniciarNivel(nivel) {
+    document.getElementById("inicio").style.display = "none";
+    document.getElementById("pantallaNivel").style.display = "none";
+    document.getElementById("pantallaFinal").style.display = "none";
+    document.getElementById("juego").style.display = "block";
+    nivelActual = nivel;
+    intentos = 10;
+    crearTablero();
+    document.getElementById("nivelTitulo").innerText =
+      nivel === 1 ? "Nivel 1: Encuentra el Peón ♙" : "Nivel 2: Encuentra el Rey ♔";
+    intentosTexto.textContent = `Intentos restantes: ${intentos}`;
+    mensaje.innerHTML = "";
+  }
+
+  function crearTablero() {
+    tablero.innerHTML = "";
+    for (let fila = 0; fila < 8; fila++) {
+      for (let col = 0; col < 9; col++) {
+        let casilla = document.createElement("div");
+        if (col === 0) {
+          casilla.className = "numero";
+          casilla.textContent = 8 - fila;
+        } else {
+          let color = (fila + col) % 2 === 0 ? "blanca" : "negra";
+          casilla.className = "casilla " + color;
+          casilla.dataset.col = letras[col - 1];
+          casilla.dataset.fila = 8 - fila;
+        }
+        tablero.appendChild(casilla);
+      }
+    }
+    for (let i = 0; i < 9; i++) {
+      let letra = document.createElement("div");
+      letra.className = "letra";
+      letra.textContent = i === 0 ? "" : letras[i - 1];
+      tablero.appendChild(letra);
+    }
+    fichaPos = letras[Math.floor(Math.random() * 8)] + (Math.floor(Math.random() * 8) + 1);
+  }
+
+  function verificarPregunta() {
+    const input = document.getElementById("pregunta");
+    const texto = input.value.trim().toUpperCase();
+    if (texto === "") return;
+
+    const regexCasilla = /^([A-H][1-8])$/i;
+
+    if (texto.match(regexCasilla)) {
+      let guess = texto.toUpperCase();
+      if (guess === fichaPos) {
+        mensaje.innerHTML = `✅ ¡Adivinaste! La ficha estaba en ${fichaPos}`;
+        pintarCasilla(guess, "verde");
+        setTimeout(() => mostrarPantallaNivel(), 2000);
+      } else {
+        mensaje.innerHTML = `❌ No está en ${guess}`;
+        pintarCasilla(guess, "rojo");
+        reducirIntento();
+      }
+      return;
+    }
+
+    const regexColumna = /COLUMNA\s([A-H])/i;
+    const regexFila = /FILA\s([1-8])/i;
+    const regexColRango = /COLUMNA\s([A-H])\s*[-–]\s*([A-H])/i;
+    const regexFilaRango = /FILA\s([1-8])\s*[-–]\s*([1-8])/i;
+
+    let matchColumna = texto.match(regexColumna);
+    let matchFila = texto.match(regexFila);
+    let matchColRango = texto.match(regexColRango);
+    let matchFilaRango = texto.match(regexFilaRango);
+
+    if (!matchColumna && !matchFila && !matchColRango && !matchFilaRango) {
+      mensaje.innerHTML = "❌ Pregunta mal escrita. Ejemplo: '¿Está en la columna D?' o 'E4'";
+      return;
+    }
+
+    if (matchColRango) {
+      let c1 = matchColRango[1].toUpperCase();
+      let c2 = matchColRango[2].toUpperCase();
+      let posCol = fichaPos[0];
+      if (letras.indexOf(posCol) >= letras.indexOf(c1) && letras.indexOf(posCol) <= letras.indexOf(c2)) {
+        mensaje.innerHTML = "✅ Sí está dentro de ese rango de columnas.";
+      } else {
+        mensaje.innerHTML = "❌ No está dentro de ese rango de columnas.";
+        reducirIntento();
+      }
+      return;
+    }
+
+    if (matchFilaRango) {
+      let f1 = parseInt(matchFilaRango[1]);
+      let f2 = parseInt(matchFilaRango[2]);
+      let posFila = parseInt(fichaPos[1]);
+      if (posFila >= f1 && posFila <= f2) {
+        mensaje.innerHTML = "✅ Sí está dentro de ese rango de filas.";
+      } else {
+        mensaje.innerHTML = "❌ No está dentro de ese rango de filas.";
+        reducirIntento();
+      }
+      return;
+    }
+
+    if (matchColumna) {
+      let col = matchColumna[1].toUpperCase();
+      if (fichaPos.startsWith(col)) {
+        mensaje.innerHTML = "✅ Sí está en esa columna.";
+      } else {
+        mensaje.innerHTML = "❌ No está en esa columna.";
+        reducirIntento();
+      }
+    }
+
+    if (matchFila) {
+      let fila = matchFila[1];
+      if (fichaPos.endsWith(fila)) {
+        mensaje.innerHTML = "✅ Sí está en esa fila.";
+      } else {
+        mensaje.innerHTML = "❌ No está en esa fila.";
+        reducirIntento();
+      }
+    }
+  }
+
+  function pintarCasilla(pos, color) {
+    document.querySelectorAll(`[data-col='${pos[0]}'][data-fila='${pos[1]}']`).forEach(c => c.classList.add(color));
+  }
+
+  function reducirIntento() {
+    intentos--;
+    intentosTexto.textContent = `Intentos restantes: ${intentos}`;
+    if (intentos <= 0) {
+      mostrarPantallaFinal(false);
+    }
+  }
+
+  function mostrarPantallaNivel() {
+    document.getElementById("juego").style.display = "none";
+    document.getElementById("pantallaNivel").style.display = "flex";
+    document.getElementById("textoNivel").textContent = `🎉 ¡Nivel ${nivelActual} completado!`;
+  }
+
+  function continuarNivel() {
+    if (nivelActual === 1) {
+      iniciarNivel(2);
+    } else {
+      mostrarPantallaFinal(true);
+    }
+  }
+
+  function mostrarPantallaFinal(ganaste) {
+    document.getElementById("juego").style.display = "none";
+    document.getElementById("pantallaNivel").style.display = "none";
+    document.getElementById("pantallaFinal").style.display = "flex";
+    document.getElementById("resultadoFinal").textContent = ganaste ? "🏆 ¡Ganaste el juego!" : "💀 ¡Perdiste!";
+  }
+
+  function reiniciarJuego() {
+    document.getElementById("pantallaFinal").style.display = "none";
+    document.getElementById("pantallaNivel").style.display = "none";
+    document.getElementById("inicio").style.display = "flex";
+  }
+
+  function salirJuego() {
+    window.close();
+  }
+</script>
+</body>
+</html>
